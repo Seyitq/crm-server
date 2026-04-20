@@ -51,6 +51,7 @@ async function start() {
   await app.register(helmet, {
     contentSecurityPolicy: false, // CORS/CSP managed by Tauri
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: false, // Allow Tauri WebView to load images from this server
   });
 
   // Rate limiting — global (generous) + stricter on auth routes
