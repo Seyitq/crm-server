@@ -23,6 +23,7 @@ import { wsHandler } from './ws/handler.js';
 import { startDepositExpiryJob } from './jobs/deposit-expiry.js';
 import { startBackupCheckJob } from './jobs/backup-check.js';
 import { startLockCleanupJob, startOverdueInstallmentCheckJob } from './jobs/lock-cleanup.js';
+import { startTaskDeadlineJob } from './jobs/task-deadline.js';
 import { prisma } from './lib/prisma.js';
 import fs from 'fs';
 import path from 'path';
@@ -139,6 +140,7 @@ async function start() {
   startBackupCheckJob();
   startLockCleanupJob();
   startOverdueInstallmentCheckJob();
+  startTaskDeadlineJob();
 
   // Verify database connection
   try {
