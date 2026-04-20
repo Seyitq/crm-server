@@ -23,6 +23,7 @@ const createSaleSchema = z.object({
   installments: z.array(installmentItemSchema).optional(),
   installmentCount: z.number().int().positive().optional(), // Auto-generate from count
   depositId: z.string().optional(), // Link to existing deposit
+  depositAmount: z.number().nonnegative().optional(), // MIXED: upfront payment portion
 });
 
 const payInstallmentSchema = z.object({
@@ -134,9 +135,15 @@ export const saleRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       // Create installments if applicable
-      if (body.paymentType === 'INSTALLMENT') {
-        if (body.installments?.length) {
-          // Use explicitly provided installments
+      if (body.paymentType === 'INSTALLMENT' || body.paymentType === 'MIXED') {
+        // For MIXED: base amount is totalPrice minus the upfront depositAmount
+        const baseAmount =
+          body.paymentType === 'MIXED'
+            ? body.totalPrice - (body.depositAmount ?? 0)
+            : body.totalPrice;
+
+        if (body.paymentType === 'INSTALLMENT' && body.installments?.length) {
+          // Use explicitly provided installments (only for INSTALLMENT)
           await tx.installment.createMany({
             data: body.installments.map(inst => ({
               saleId: newSale.id,
@@ -146,16 +153,16 @@ export const saleRoutes: FastifyPluginAsync = async (fastify) => {
             })),
           });
         } else if (body.installmentCount) {
-          // Auto-generate equal installments
+          // Auto-generate equal installments from baseAmount
           const count = body.installmentCount;
-          const instAmount = Math.round((body.totalPrice / count) * 100) / 100;
+          const instAmount = Math.round((baseAmount / count) * 100) / 100;
           const installmentData = [];
           for (let i = 1; i <= count; i++) {
             const dueDate = new Date();
             dueDate.setMonth(dueDate.getMonth() + i);
             installmentData.push({
               saleId: newSale.id,
-              amount: i === count ? body.totalPrice - instAmount * (count - 1) : instAmount,
+              amount: i === count ? Math.round((baseAmount - instAmount * (count - 1)) * 100) / 100 : instAmount,
               dueDate,
               order: i,
             });
